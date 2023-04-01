@@ -3,10 +3,7 @@ const fs = await import("fs");
 const path = await import("path");
 
 
-const settings = {
-  temporaryFolder: "./temp",
-  allowedExtension:["mp4", "webm", "mov", "avi", "flv","js"]
-};
+const settings = process.settings;
 /*
 
 {
@@ -21,21 +18,21 @@ function downloadTorrent(options, id) {
 
     client.add(torrentLink, { path: settings.temporaryFolder }, (torrent) => {
       torrent.on("done", async () => {
-        process[id].download.running = false;
-        process[id].download.success = true;
+        process.workloads[id].download.running = false;
+        process.workloads[id].download.success = true;
         await cleanUpFiles({ path: settings.temporaryFolder,allowSubtitles:options.allowSubtitles });
         torrent.destroy() //No seeding after we are done downloading
         resolve(id);
       });
       torrent.on("error", function (err) {
-        process[id].error = err;
-        process[id].finished = true;
-        process[id].download.running = false;
-        process[id].download.success = false;
+        process.workloads[id].error = err;
+        process.workloads[id].finished = true;
+        process.workloads[id].download.running = false;
+        process.workloads[id].download.success = false;
         reject(err);
       });
       torrent.on("download", () => {
-        process[id].download.progress = {
+        process.workloads[id].download.progress = {
           eta: torrent.timeRemaining,
           received: torrent.received,
           downloaded: torrent.downloaded,
@@ -45,8 +42,8 @@ function downloadTorrent(options, id) {
         };
         process.update(id)
       });
-      process[id].download.success = false;
-      process[id].download.running = true;
+      process.workloads[id].download.success = false;
+      process.workloads[id].download.running = true;
     });
   });
 }

@@ -10,30 +10,36 @@ const fs = await import("fs");
     codec: <string>
 }
 */
-async function encode(options, id) {
+async function encode(options, id, fileid) {
   return new Promise((resolve, reject) => {
     let cmd = ffmpeg(options.file).autopad().size(options.resolution).videoCodec(options.codec).outputOptions(options.options);
 
     cmd.on("progress", function (progress) {
-      process[id].encoding.progress = progress;
-      process[id].encoding.running = true;
-      process[id].encoding.success = false;
-      process.update(id)
+      process.workloads[id].encodingFiles[fileid] = {
+        progress:progress,
+        id:fileid,
+        stopped:false,
+        error:null
+      }
+      process.update(id);
     });
     cmd.on("error", function (err, stdout, stderr) {
-      process[id].error = err;
-      process[id].finished = true;
-      process[id].encoding.running = false;
-      process[id].encoding.success = false;
-      reject(process[id]);
+      process.workloads[id].encodingFiles[fileid] = {
+        progress:process.workloads[id].encodingFiles[fileid].progress,
+        id:fileid,
+        stopped:true,
+        error:err
+      }
+      reject(id);
     });
     cmd.on("end", function (stdout, stderr) {
-      process[id].encoding.progress = {
-        percent: 100,
-      };
-      process[id].encoding.running = false;
-      process[id].encoding.success = true;
-      resolve(process[id]);
+      process.workloads[id].encodingFiles[fileid] = {
+        progress:process.workloads[id].encodingFiles[fileid].progress,
+        id:fileid,
+        stopped:true,
+        error:null
+      }
+      resolve(id);
     });
 
     cmd.save(options.output);
