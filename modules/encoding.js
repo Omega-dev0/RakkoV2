@@ -33,7 +33,7 @@ async function encode(options, id, fileid) {
     });
     cmd.on("error", function (err, stdout, stderr) {
       process.workloads[id].encodingFiles[fileid] = {
-        progress: process.workloads[id].encodingFiles[fileid].progress,
+        progress: process.workloads[id].encodingFiles[fileid]!=null ? process.workloads[id].encodingFiles[fileid].progress : null,
         id: fileid,
         stopped: true,
         error: err,
@@ -71,7 +71,7 @@ async function encode(options, id, fileid) {
       });
       cmd2.on("error", function (err, stdout, stderr) {
         process.workloads[id].encodingFiles[fileid] = {
-          progress: process.workloads[id].encodingFiles[fileid].progress,
+          progress: process.workloads[id].encodingFiles[fileid]!=null ? process.workloads[id].encodingFiles[fileid].progress : null,
           id: fileid,
           stopped: true,
           error: err,
@@ -118,7 +118,7 @@ async function changeResolution(path,output, res, id, fileid) {
       process.workloads[id].splittingFiles[fileid][res] = {
         progress: progress,
         id: fileid,
-        stopped: false,
+        finished: false,
         error: null,
         res:res
       };
@@ -126,9 +126,9 @@ async function changeResolution(path,output, res, id, fileid) {
     });
     cmd.on("error", function (err, stdout, stderr) {
       process.workloads[id].splittingFiles[fileid][res] = {
-        progress: process.workloads[id].splittingFiles[fileid][res].progress,
+        progress: process.workloads[id].splittingFiles[fileid][res]!=undefined ? process.workloads[id].splittingFiles[fileid][res].progress : null,
         id: fileid,
-        stopped: true,
+        finished: true,
         error: err,
         res:res
       };
@@ -140,10 +140,10 @@ async function changeResolution(path,output, res, id, fileid) {
       });
     });
     cmd.on("end", function (stdout, stderr) {
-      process.workloads[id].encodingFiles[fileid][res] = {
+      process.workloads[id].splittingFiles[fileid][res] = {
         progress: process.workloads[id].splittingFiles[fileid][res].progress,
         id: fileid,
-        stopped: true,
+        finished: true,
         error: null,
         res:res
       };

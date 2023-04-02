@@ -32,88 +32,124 @@ async function processRequest(options, id) {
     name: "Processing started",
     date: new Date(),
   });
-  process.workloads[id].timeline.push({
-    name: "Download started",
-    date: new Date(),
-  });
-  process.workloads[id].step = "Downloading";
-  await torrentHandler.downloadTorrent(options.torrent, id);
-  process.workloads[id].timeline.push({
-    name: "Download finished",
-    date: new Date(),
-  });
+
+  if (options.steps.download == true) {
+    process.workloads[id].timeline.push({
+      name: "Download started",
+      date: new Date(),
+    });
+    process.workloads[id].step = "Downloading";
+    await torrentHandler.downloadTorrent(options.torrent, id);
+    process.workloads[id].timeline.push({
+      name: "Download finished",
+      date: new Date(),
+    });
+  }
 
   //ENCODING
-  process.workloads[id].step = "Encoding";
-  process.workloads[id].timeline.push({
-    name: "Encoding started",
-    date: new Date(),
-  });
-  let elements = fs.readdirSync(process.settings.temporaryFolder);
-  process.workloads[id].encodingFiles = {};
-  for (let element of elements) {
-    //FOR EACH VIDEO FILE
-    if (process.settings.allowedExtension.includes(element.split(".")[element.split(".").length - 1])) {
-      let metadata = await encodingHandler.getMetadata(`${process.settings.temporaryFolder}/${element}`);
-      if (options.encoding.bypassParameters.enabled == true && options.encoding.bypassParameters.codecs.includes(metadata.streams[0].codec_name) && metadata.format.bit_rate <= options.encoding.bypassParameters.maxBitrate) {
-        console.log(`Bypassing encoding for ${element}, codec: ${metadata.streams[0].codec_name}, bitrate: ${metadata.streams[0].bit_rate}`);
-        //JUST RESIZING SO LATER JUST MOVING THE FILE TO THE TEMPORARY FOLDER
-        fs.rename(`${process.settings.temporaryFolder}/${element}`, `${process.settings.encodingTemporaryFolder}/${element}`);
-      } else {
-        //LET'S START ENCODING
-        process.workloads[id].encodingFiles[element] = {
-          id: element,
-          started: false,
-        };
-        try {
-          await encodingHandler.encode(
-            {
-              file: path.resolve(`${process.settings.temporaryFolder}/${element}`),
-              output: path.resolve(`${process.settings.encodingTemporaryFolder}/${element}`),
-              options: options.encoding.encodingOptions,
-              codec: options.encoding.codec,
-              maxBitrate: options.encoding.maxBitRate,
-            },
-            id,
-            element
-          );
-        } catch (e) {
-          console.error("An error occured while encoding the file", element);
+
+  if (options.steps.encoding == true) {
+    process.workloads[id].step = "Encoding";
+    process.workloads[id].timeline.push({
+      name: "Encoding started",
+      date: new Date(),
+    });
+    let elements = fs.readdirSync(process.settings.temporaryFolder);
+    process.workloads[id].encodingFiles = {};
+    for (let element of elements) {
+      //FOR EACH VIDEO FILE
+      if (process.settings.allowedExtension.includes(element.split(".")[element.split(".").length - 1])) {
+        let metadata = await encodingHandler.getMetadata(`${process.settings.temporaryFolder}/${element}`);
+        if (options.encoding.bypassParameters.enabled == true && options.encoding.bypassParameters.codecs.includes(metadata.streams[0].codec_name) && metadata.format.bit_rate <= options.encoding.bypassParameters.maxBitrate) {
+          console.log(`Bypassing encoding for ${element}, codec: ${metadata.streams[0].codec_name}, bitrate: ${metadata.streams[0].bit_rate}`);
+          //JUST RESIZING SO LATER JUST MOVING THE FILE TO THE TEMPORARY FOLDER
+          fs.rename(`${process.settings.temporaryFolder}/${element}`, `${process.settings.encodingTemporaryFolder}/${element}`);
+        } else {
+          //LET'S START ENCODING
+          process.workloads[id].encodingFiles[element] = {
+            id: element,
+            started: false,
+          };
+          try {
+            await encodingHandler.encode(
+              {
+                file: path.resolve(`${process.settings.temporaryFolder}/${element}`),
+                output: path.resolve(`${process.settings.encodingTemporaryFolder}/${element}`),
+                options: options.encoding.encodingOptions,
+                codec: options.encoding.codec,
+                maxBitrate: options.encoding.maxBitRate,
+              },
+              id,
+              element
+            );
+          } catch (e) {
+            console.error("An error occured while encoding the file", element);
+          }
         }
       }
     }
+    process.workloads[id].timeline.push({
+      name: "Encoding finished",
+      date: new Date(),
+    });
   }
-  process.workloads[id].timeline.push({
-    name: "Encoding finished",
-    date: new Date(),
-  });
 
-  //CLEAR TEMPORARY FOLDER
-  process.workloads[id].timeline.push({
-    name: "Cleaning up temporary folders...",
-    date: new Date(),
-  });
-  clear("./temp");
-  clear("./encodingLogs");
+  if (options.steps.clean == true) {
+    process.workloads[id].timeline.push({
+      name: "Cleaning up temporary folders...",
+      date: new Date(),
+    });
+    clear("./temp");
+    clear("./encodingLogs");
+  }
 
-  process.workloads[id].timeline.push({
-    name: "Splitting started",
-    date: new Date(),
-  });
-
-  process.workloads[id].step = "Splitting";
-  process.workloads[id].splittingFiles = {};
-  elements = fs.readdirSync(process.settings.encodingTemporaryFolder);
-  for (let element of elements) {
-    process.workloads[id].splittingFiles[element] = {};
-    for (let index = 0; index < options.encoding.resolutions.length; index++) {
-      let res = options.encoding.resolutions[index];
-      encodingHandler.changeResolution(path.resolve(`${process.settings.encodingTemporaryFolder}/${element}`), path.resolve(`${process.settings.versionsTemporaryFolder}/${element}`), res, id, element);
+  if (options.steps.split == true) {
+    process.workloads[id].timeline.push({
+      name: "Splitting started",
+      date: new Date(),
+    });
+    process.workloads[id].step = "Splitting";
+    process.workloads[id].splittingFiles = {};
+    const elements2 = fs.readdirSync(process.settings.encodingTemporaryFolder);
+    for (let element of elements2) {
+      process.workloads[id].splittingFiles[element] = {
+        id: element,
+        started: true,
+        finished: false,
+      };
+      for (let index = 1; index < options.encoding.resolutions.length; index++) {
+        let res = options.encoding.resolutions[index];
+        try {
+          process.workloads[id].splittingFiles[element][res] = {
+            id: element,
+            started: true,
+            finished: false,
+          };
+          await encodingHandler.changeResolution(path.resolve(`${process.settings.encodingTemporaryFolder}/${element}`), path.resolve(`${process.settings.versionsTemporaryFolder}/${res}-${element}`), res, id, element);
+          process.workloads[id].splittingFiles[element][res] = {
+            id: element,
+            started: true,
+            finished: true,
+          };
+        } catch (e) {
+          console.error("An error occured while splitting the file", element);
+          process.workloads[id].splittingFiles[element][res] = {
+            id: element,
+            started: true,
+            finished: true,
+          };
+        }
+      }
+      fs.renameSync(path.resolve(`${process.settings.encodingTemporaryFolder}/${element}`), path.resolve(`${process.settings.versionsTemporaryFolder}/${options.encoding.resolutions[0]}-${element}`));
+      process.workloads[id].splittingFiles[element] = {
+        id: element,
+        started: true,
+        finished: true,
+      };
     }
   }
-  process.update(id);
 
-  //ENCODING FINISHED LET'S GET THE RESOLUTIONS
+  console.log("Uploading...")
 }
 
 function clearFolder(directory) {
@@ -124,9 +160,7 @@ function clearFolder(directory) {
       if (fs.statSync(path.join(directory, file)).isDirectory()) {
         clearFolder(path.join(directory, file));
       } else {
-        fs.unlink(path.join(directory, file), (err) => {
-          if (err) throw err;
-        });
+        fs.unlink(path.join(directory, file), (err) => {});
       }
     }
   });
@@ -135,8 +169,12 @@ function clearFolder(directory) {
 function clear(directory) {
   clearFolder(directory);
   fs.readdir(directory, (err, files) => {
-    if (fs.statSync(path.join(directory, file)).isDirectory()) {
-      fs.rmdirSync(path.join(directory, file), { recursive: true });
+    for (const file of files) {
+      try {
+        if (fs.statSync(path.join(directory, file)).isDirectory()) {
+          fs.rmdirSync(path.join(directory, file), { recursive: true });
+        }
+      } catch (e) {}
     }
   });
 }
@@ -161,10 +199,11 @@ function logProgress(id) {
     process.stdout.write(`[${id}]/[${currentFile[0].id}](pass: ${currentFile[0].pass}) --> ${data.step} | Progress: ${currentProgress.percent.toFixed(2)}%, currentFPS: ${currentProgress.currentFps}\r`);
   } else if (data.step == "Splitting") {
     let currentFile = Object.values(data.splittingFiles).filter((data) => {
-      return data.stopped == false && data.started != false;
+      return data.finished == false && data.started != false;
     });
-    let currentRes = Object.values(currentFile).filter((data) => {
-      return data.stopped == false && data.started != false;
+
+    let currentRes = Object.values(currentFile[0]).filter((data) => {
+      return data.finished == false && data.started != false;
     });
     let currentProgress = currentRes[0].progress;
     process.stdout.write(`[${id}]/[${currentRes[0].id}](res: ${currentRes[0].res}) --> ${data.step} | Progress: ${currentProgress.percent.toFixed(2)}%, currentFPS: ${currentProgress.currentFps}\r`);
@@ -192,6 +231,12 @@ processRequest(
         codecs: ["h264", "vp9"],
         maxBitRate: 4000000,
       },
+    },
+    steps: {
+      download: false,
+      encoding: false,
+      split: true,
+      clean: true,
     },
   },
   "test"
