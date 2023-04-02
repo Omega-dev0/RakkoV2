@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link href="https://vjs.zencdn.net/8.0.4/video-js.css" rel="stylesheet" />
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rakko test player</title>
+  </head>
+  <body>
+    <label>Link:</label><input id="link" /><button id="load">load player</button><br>
+    <div style="width: 90vw; height: 90vh;">
+    <video id="videoPlayer" class="video-js vjs-default-skin"  controls>
+    </div>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+
+      });
+
+      document.getElementById("load").addEventListener("click", () => {
+        let player = document.getElementById("videoPlayer")
+        player.src= document.getElementById("link").value
+      })
+    </script>
+
+    <script src="https://vjs.zencdn.net/8.0.4/video.min.js"></script>
+  </body>
+</html>

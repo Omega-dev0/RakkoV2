@@ -19,7 +19,7 @@ async function encode(options, id, fileid) {
     let cmd = ffmpeg(options.file)
       .videoCodec(options.codec)
       .outputOptions(["-pass", "1", "-passlogfile", `${process.settings.encodingLogsTemporaryFolder}/${id}-${fileid.split(".")[0].replaceAll(" ", "_")}`])
-      .videoBitrate(options.maxBitrate/1000);
+      .videoBitrate(options.maxBitrate / 1000);
 
     cmd.on("progress", function (progress) {
       process.workloads[id].encodingFiles[fileid] = {
@@ -58,7 +58,7 @@ async function encode(options, id, fileid) {
       let cmd2 = ffmpeg(options.file)
         .videoCodec(options.codec)
         .outputOptions(["-pass", "2", "-passlogfile", `${process.settings.encodingLogsTemporaryFolder}/${id}-${fileid.split(".")[0].replaceAll(" ", "_")}`])
-        .videoBitrate(options.maxBitrate/1000);
+        .videoBitrate(options.maxBitrate / 1000);
       cmd2.on("progress", function (progress) {
         process.workloads[id].encodingFiles[fileid] = {
           progress: progress,
@@ -111,4 +111,47 @@ async function getMetadata(path) {
   });
 }
 
-export { encode, getMetadata };
+async function changeResolution(path,output, res, id, fileid) {
+  return new Promise((resolve, reject) => {
+    let cmd = ffmpeg(path).size(res); //ffmpeg -i input.mp4 -vf scale=$w:$h <encoding-parameters> output.mp4
+    cmd.on("progress", function (progress) {
+      process.workloads[id].splittingFiles[fileid][res] = {
+        progress: progress,
+        id: fileid,
+        stopped: false,
+        error: null,
+        res:res
+      };
+      process.update(id);
+    });
+    cmd.on("error", function (err, stdout, stderr) {
+      process.workloads[id].splittingFiles[fileid][res] = {
+        progress: process.workloads[id].splittingFiles[fileid][res].progress,
+        id: fileid,
+        stopped: true,
+        error: err,
+        res:res
+      };
+      reject({
+        error: err,
+        stdout: stdout,
+        stderr: stderr,
+        id: id,
+      });
+    });
+    cmd.on("end", function (stdout, stderr) {
+      process.workloads[id].encodingFiles[fileid][res] = {
+        progress: process.workloads[id].splittingFiles[fileid][res].progress,
+        id: fileid,
+        stopped: true,
+        error: null,
+        res:res
+      };
+      resolve(id);
+    });
+
+    cmd.save(output);
+  });
+}
+
+export { encode, getMetadata, changeResolution };
