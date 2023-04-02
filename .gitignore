@@ -1,6 +1,9 @@
 #Temporary folders
-temp
-encodingTemp
+temp/*
+encodingTemp/*
+encodingLogs/*
+bin/*
+*.temp
 
 # Logs
 logs

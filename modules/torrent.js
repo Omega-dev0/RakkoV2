@@ -2,8 +2,6 @@ const WebTorrent = (await import("webtorrent")).default;
 const fs = await import("fs");
 const path = await import("path");
 
-
-const settings = process.settings;
 /*
 
 {
@@ -16,12 +14,12 @@ function downloadTorrent(options, id) {
     const client = new WebTorrent();
     let torrentLink = getTorrent(options.input);
 
-    client.add(torrentLink, { path: settings.temporaryFolder }, (torrent) => {
+    client.add(torrentLink, { path: process.settings.temporaryFolder }, (torrent) => {
       torrent.on("done", async () => {
         process.workloads[id].download.running = false;
         process.workloads[id].download.success = true;
-        await cleanUpFiles({ path: settings.temporaryFolder,allowSubtitles:options.allowSubtitles });
-        torrent.destroy() //No seeding after we are done downloading
+        await cleanUpFiles({ path: process.settings.temporaryFolder, allowSubtitles: options.allowSubtitles });
+        torrent.destroy(); //No seeding after we are done downloading
         resolve(id);
       });
       torrent.on("error", function (err) {
@@ -40,7 +38,7 @@ function downloadTorrent(options, id) {
           progress: torrent.progress,
           ratio: torrent.ratio,
         };
-        process.update(id)
+        process.update(id);
       });
       process.workloads[id].download.success = false;
       process.workloads[id].download.running = true;
@@ -57,43 +55,53 @@ function getTorrent(input) {
 }
 
 function cleanUpFiles(options) {
-  return new Promise((resolve, reject) => {
-    let allowedExtensions = settings.allowedExtension
-    if(options.allowSubtitles){
-        allowedExtensions.push("srt");
+  function timeout(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  return new Promise(async (resolve, reject) => {
+    let allowedExtensions = process.settings.allowedExtension;
+    if (options.allowSubtitles) {
+      allowedExtensions.push("srt");
     }
 
     const getFilesRecursively = (directory) => {
       const filesInDirectory = fs.readdirSync(directory);
       for (const file of filesInDirectory) {
         const absolute = path.join(directory, file);
-        if (fs.statSync(absolute).isDirectory()) {
-          getFilesRecursively(absolute);
-        } else {
-          files.push(absolute.replaceAll('\\', '/'));
+        if (fs.existsSync(absolute)) {
+          if (fs.statSync(absolute).isDirectory()) {
+            getFilesRecursively(absolute);
+          } else {
+            files.push(absolute.replaceAll("\\", "/"));
+          }
         }
       }
       return files;
     };
 
     let files = [];
+    let bin = []
     getFilesRecursively(options.path);
-    files.forEach(file => {
-        if(!allowedExtensions.includes(file.split('.')[file.split('.').length - 1])){
-            fs.unlinkSync(file);
-        }else{
-            fs.renameSync(file,options.path+"/"+file.split("/")[file.split("/").length - 1]);
-        }
-    })
+    for (let file of files) {
+      if (!allowedExtensions.includes(file.split(".")[file.split(".").length - 1])) {
+        bin.push(file)
+      } else {
+        fs.renameSync(file, options.path + "/" + file.split("/")[file.split("/").length - 1]);
+      }
+    }
+
     //cleaning up folders
     let elements = fs.readdirSync(options.path);
     for (let element of elements) {
-        if(fs.statSync(`${options.path}/${element}`).isDirectory()){
-            fs.rmSync(`${options.path}/${element}`, { recursive: true, force: true });
-        };
+      if (fs.existsSync(`${options.path}/${element}`)) {
+        if (!element.includes(".")) {
+          //fs.removeSync(`${options.path}/${element}`, { recursive: true});
+        }
+      }
     }
 
-    resolve()
+    resolve();
   });
 }
 
