@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rakko DL</title>
+    <style>
+      pre {
+        outline: 1px solid #ccc;
+        padding: 5px;
+        margin: 5px;
+      }
+      .string {
+        color: green;
+      }
+      .number {
+        color: darkorange;
+      }
+      .boolean {
+        color: blue;
+      }
+      .null {
+        color: magenta;
+      }
+      .key {
+        color: red;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Rakko DL</h1>
+    <div>
+      <h4>Order creator</h4>
+      <label>Tmdb ID (opt)</label><input id="tmdbId" /><br />
+      <label>Order id</label><input id="id" value="test" /><br />
+      <label>Magnet link</label><input id="link" /><br />
+      <label>codec</label><input id="codec" value="libx264" /><br />
+      <label>Bitrate</label><input id="bitrate" value="4000000" /><br />
+      <label>Resolutions</label><input id="resolution" value="1920x1080, 1280x720, 640x480" />
+      <br />
+      <label>Bypass enabled</label><input type="checkbox" id="bypassEnabled" checked /><br />
+      <label>Bypass birate</label><input id="bypassBitrate" value="4000000" /><br />
+      <br />
+      <label>Use test file</label><input type="checkbox" id="testFile" checked /><br />
+      <button id="send">Send order</button>
+    </div>
+    <div>
+      <h4>Order monitoring</h4>
+      <p id="workloads"></p>
+    </div>
+    <div>
+      <h4>Logs</h4>
+      <div id="logs"></div>
+    </div>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.js"
+      integrity="sha512-xbQU0+iHqhVt7VIXi6vBJKPh3IQBF5B84sSHdjKiSccyX/1ZI7Vnkt2/8y8uruj63/DVmCxfUNohPNruthTEQA=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script>
+      const socket = io();
+      socket.on("log", (data) => {
+        output(syntaxHighlight(data.workloads));
+        document.getElementById("logs").innerHTML = `${data.text} <br>`;
+      });
+
+      document.getElementById("send").addEventListener("click", () => {
+        console.log("Order!");
+        socket.emit("order", {
+          config: {
+            logging: true,
+            torrent: {
+              input: document.getElementById("link").value, //TORRENT PATH OR MAGNET URI
+              allowSubtitles: false,
+            },
+            encoding: {
+              resolutions: document.getElementById("resolution").value.split(","),
+              encodingOptions: [],
+              codec: document.getElementById("codec").value,
+              maxBitRate: document.getElementById("bitrate").value,
+              bypassParameters: {
+                enabled: document.getElementById("bypassEnabled").checked,
+                codecs: ["h264", "vp9"],
+                maxBitRate: document.getElementById("bypassBitrate").value,
+              },
+            },
+            steps: {
+              download: true,
+              encoding: true,
+              split: true,
+              clean: true,
+            },
+          },
+          id: document.getElementById("id").value,
+          testFile: document.getElementById("testFile").checked,
+        });
+      });
+
+      function output(inp) {
+        document.getElementById("workloads").innerHTML = "";
+        document.getElementById("workloads").appendChild(document.createElement("pre")).innerHTML = inp;
+      }
+
+      function syntaxHighlight(json) {
+        if (typeof json != "string") {
+          json = JSON.stringify(json, undefined, 2);
+        }
+        json = json.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+          var cls = "number";
+          if (/^"/.test(match)) {
+            if (/:$/.test(match)) {
+              cls = "key";
+            } else {
+              cls = "string";
+            }
+          } else if (/true|false/.test(match)) {
+            cls = "boolean";
+          } else if (/null/.test(match)) {
+            cls = "null";
+          }
+          return '<span class="' + cls + '">' + match + "</span>";
+        });
+      }
+    </script>
+  </body>
+</html>
