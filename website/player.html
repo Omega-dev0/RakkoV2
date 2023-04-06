@@ -7,22 +7,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Rakko test player</title>
   </head>
-  <body>
-    <label>Link:</label><input id="link" /><button id="load">load player</button><br>
-    <div style="width: 90vw; height: 90vh;">
-    <video id="videoPlayer" class="video-js vjs-default-skin"  controls>
-    </div>
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
 
+  <body>
+    <label>Link:</label><input id="link" /><button id="load">load player</button><br />
+    <video id="videoPlayer" controls muted autoplay></video>
+    <script>
+      document.getElementById("load").addEventListener("click", () => {
+        let player = document.getElementById("videoPlayer");
+        let assetURL = document.getElementById("link").value;
+
+        let stream = new MediaStream();
+        //let processor = new MediaStreamTrackProcessor()
+
+        let objectURL = URL.createObjectURL(assetURL);
+        console.log(objectURL);
+
+        player.srcObject = stream;
       });
 
-      document.getElementById("load").addEventListener("click", () => {
-        let player = document.getElementById("videoPlayer")
-        player.src= document.getElementById("link").value
-      })
+      async function getDynLink(host, id, cdn) {
+        return new Promise((resolve, reject) => {
+          const static = "https://omegadev.castoretpapillon7307.workers.dev";
+          fetch(static, {
+            method: "GET",
+            headers: {
+              id: id,
+              "domain-files": host,
+            },
+          }).then(async (response) => {
+            let link = await response.text()
+            if(cdn){
+              let url = new URL(link)
+              url.hostname = "cdn-"+cdn+".anonfiles.com"
+              resolve(url.toString())
+            }else{
+              resolve(link)
+            }
+          });
+        });
+      }
     </script>
-
-    <script src="https://vjs.zencdn.net/8.0.4/video.min.js"></script>
   </body>
 </html>

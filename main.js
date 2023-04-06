@@ -8,13 +8,18 @@ process.settings = {
   encodingTemporaryFolder: "./encodingTemp",
   encodingLogsTemporaryFolder: "./encodingLogs",
   versionsTemporaryFolder: "./versionsTemp",
-  allowedExtension: ["mp4", "webm", "mov", "avi", "flv", "js"],
+  allowedExtension: ["mp4", "webm", "mov", "avi", "flv", "js", "mkv"],
 };
 process.workloads = {};
 
-async function processRequest(options, id, testFile) {
+if (!process.logMethod) {
+  process.logMethod = (text) => {
+    process.stdout.write(text);
+  };
+}
 
-  console.log(id,testFile)
+async function processRequest(options, id, testFile) {
+  console.log(id, testFile);
 
   process.workloads[id] = {
     finished: false,
@@ -36,14 +41,14 @@ async function processRequest(options, id, testFile) {
     name: "Processing started",
     date: new Date(),
   });
-  process.update(id)
+  process.update(id);
   if (options.steps.download == true) {
     process.workloads[id].timeline.push({
       name: "Download started",
       date: new Date(),
     });
     if (testFile == true) {
-      fs.copyFileSync(path.resolve("./Cosmos Laundromat2.mp4"),path.resolve(`./${process.settings.temporaryFolder}/Cosmos Laundromat2.mp4`));
+      fs.copyFileSync(path.resolve("./Cosmos Laundromat2.mp4"), path.resolve(`./${process.settings.temporaryFolder}/Cosmos Laundromat2.mp4`));
     } else {
       process.workloads[id].step = "Downloading";
       await torrentHandler.downloadTorrent(options.torrent, id);
@@ -66,7 +71,6 @@ async function processRequest(options, id, testFile) {
     let elements = fs.readdirSync(process.settings.temporaryFolder);
     process.workloads[id].encodingFiles = {};
     for (let element of elements) {
-      //FOR EACH VIDEO FILE
       if (process.settings.allowedExtension.includes(element.split(".")[element.split(".").length - 1])) {
         let metadata = await encodingHandler.getMetadata(`${process.settings.temporaryFolder}/${element}`);
         if (options.encoding.bypassParameters.enabled == true && options.encoding.bypassParameters.codecs.includes(metadata.streams[0].codec_name) && metadata.format.bit_rate <= options.encoding.bypassParameters.maxBitrate) {
@@ -159,20 +163,22 @@ async function processRequest(options, id, testFile) {
     }
   }
 
-
   //SEND THING TO SEND LINKS
   process.logMethod("Processing finished for order: " + id);
 }
-
 function clearFolder(directory) {
   fs.readdir(directory, (err, files) => {
     if (err) throw err;
 
     for (const file of files) {
-      if (fs.statSync(path.join(directory, file)).isDirectory()) {
-        clearFolder(path.join(directory, file));
-      } else {
-        fs.unlink(path.join(directory, file), (err) => {});
+      try {
+        if (fs.statSync(path.join(directory, file)).isDirectory()) {
+          clearFolder(path.join(directory, file));
+        } else {
+          fs.unlink(path.join(directory, file), (err) => {});
+        }
+      } catch (e) {
+        console.log(e);
       }
     }
   });
@@ -200,7 +206,7 @@ function logProgress(id) {
   if (data.step == "Not started") {
     process.logMethod(`[${id}] --> ${data.step}\r`);
   } else if (data.step == "Downloading") {
-    pprocess.logMethod(
+    process.logMethod(
       `[${id}] --> ${data.step} | Progress: ${(data.download.progress.progress * 100).toFixed(0)}%, Eta: ${(data.download.progress.eta / 1000).toFixed(0)}s, Speed:${(data.download.progress.downloadSpeed / 10e3).toFixed(
         0
       )}kb/s, Ratio:${data.download.progress.ratio.toFixed(4)}\r`
@@ -228,10 +234,10 @@ function logProgress(id) {
 process.update = (id) => {
   logProgress(id);
 };
-/*
+
 processRequest(
   {
-    logging:true,
+    logging: true,
     torrent: {
       input:
         "magnet:?xt=urn:btih:c9e15763f722f23e98a29decdfae341b98d53056&dn=Cosmos+Laundromat&tr=udp%3A%2F%2Fexplodie.org%3A6969&tr=udp%3A%2F%2Ftracker.coppersurfer.tk%3A6969&tr=udp%3A%2F%2Ftracker.empire-js.us%3A1337&tr=udp%3A%2F%2Ftracker.leechers-paradise.org%3A6969&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337&tr=wss%3A%2F%2Ftracker.btorrent.xyz&tr=wss%3A%2F%2Ftracker.fastcast.nz&tr=wss%3A%2F%2Ftracker.openwebtorrent.com&ws=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2F&xs=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2Fcosmos-laundromat.torrent", //TORRENT PATH OR MAGNET URI
@@ -244,19 +250,19 @@ processRequest(
       maxBitRate: 4000000,
       bypassParameters: {
         enabled: true,
-        codecs: ["h264", "vp9"],
+        codecs: ["h264"],
         maxBitRate: 4000000,
       },
     },
     steps: {
-      download: false,
-      encoding: false,
+      download: true,
+      encoding: true,
       split: true,
       clean: true,
     },
   },
-  "test"
+  "test",
+  false
 );
-*/
 
 export { processRequest };

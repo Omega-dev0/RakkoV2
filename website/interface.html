@@ -30,6 +30,7 @@
   </head>
   <body>
     <h1>Rakko DL</h1>
+    <button id="exit">Exit server</button>
     <div>
       <h4>Order creator</h4>
       <label>Tmdb ID (opt)</label><input id="tmdbId" /><br />
@@ -97,6 +98,10 @@
           testFile: document.getElementById("testFile").checked,
         });
       });
+
+      document.getElementById("exit").addEventListener("click", () => {
+        socket.emit("exit")
+      })
 
       function output(inp) {
         document.getElementById("workloads").innerHTML = "";

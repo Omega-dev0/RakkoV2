@@ -2,8 +2,10 @@ const ffmpeg = (await import("fluent-ffmpeg")).default;
 const fs = await import("fs");
 
 //WINDOWS ONLY
-ffmpeg.setFfmpegPath("./bin/ffmpeg.exe");
-ffmpeg.setFfprobePath("./bin/ffprobe.exe");
+if (process.windows == true) {
+  ffmpeg.setFfmpegPath("./bin/ffmpeg.exe");
+  ffmpeg.setFfprobePath("./bin/ffprobe.exe");
+}
 
 /*
 {
@@ -33,7 +35,7 @@ async function encode(options, id, fileid) {
     });
     cmd.on("error", function (err, stdout, stderr) {
       process.workloads[id].encodingFiles[fileid] = {
-        progress: process.workloads[id].encodingFiles[fileid]!=null ? process.workloads[id].encodingFiles[fileid].progress : null,
+        progress: process.workloads[id].encodingFiles[fileid] != null ? process.workloads[id].encodingFiles[fileid].progress : null,
         id: fileid,
         stopped: true,
         error: err,
@@ -71,7 +73,7 @@ async function encode(options, id, fileid) {
       });
       cmd2.on("error", function (err, stdout, stderr) {
         process.workloads[id].encodingFiles[fileid] = {
-          progress: process.workloads[id].encodingFiles[fileid]!=null ? process.workloads[id].encodingFiles[fileid].progress : null,
+          progress: process.workloads[id].encodingFiles[fileid] != null ? process.workloads[id].encodingFiles[fileid].progress : null,
           id: fileid,
           stopped: true,
           error: err,
@@ -111,7 +113,7 @@ async function getMetadata(path) {
   });
 }
 
-async function changeResolution(path,output, res, id, fileid) {
+async function changeResolution(path, output, res, id, fileid) {
   return new Promise((resolve, reject) => {
     let cmd = ffmpeg(path).size(res); //ffmpeg -i input.mp4 -vf scale=$w:$h <encoding-parameters> output.mp4
     cmd.on("progress", function (progress) {
@@ -120,17 +122,17 @@ async function changeResolution(path,output, res, id, fileid) {
         id: fileid,
         finished: false,
         error: null,
-        res:res
+        res: res,
       };
       process.update(id);
     });
     cmd.on("error", function (err, stdout, stderr) {
       process.workloads[id].splittingFiles[fileid][res] = {
-        progress: process.workloads[id].splittingFiles[fileid][res]!=undefined ? process.workloads[id].splittingFiles[fileid][res].progress : null,
+        progress: process.workloads[id].splittingFiles[fileid][res] != undefined ? process.workloads[id].splittingFiles[fileid][res].progress : null,
         id: fileid,
         finished: true,
         error: err,
-        res:res
+        res: res,
       };
       reject({
         error: err,
@@ -145,7 +147,7 @@ async function changeResolution(path,output, res, id, fileid) {
         id: fileid,
         finished: true,
         error: null,
-        res:res
+        res: res,
       };
       resolve(id);
     });

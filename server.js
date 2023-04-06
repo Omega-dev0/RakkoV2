@@ -28,9 +28,17 @@ io.on("connection", (socket) => {
     io.emit("log", { text: "Order sent", workloads: process.workloads });
     main.processRequest(data.config, data.id, data.testFile);
   })
+  socket.on("exit", (data) => {
+    throw "LOL EXIT";
+  })
 });
 
 process.logMethod = (text) => {
   //process.stdout.write(text);
   io.emit("log", { text: text, workloads: process.workloads });
 };
+
+
+if(process.argv[2] == "--windows"){
+    process.windows = true;
+}
